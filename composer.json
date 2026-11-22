@@ -1,0 +1,24 @@
+{
+    "name": "zunix/notification-lab",
+    "description": "Test Firebase Cloud Messaging in your browser and inspect Laravel database notifications.",
+    "keywords": ["laravel", "firebase", "fcm", "web-push", "notifications", "testing"],
+    "readme": "README.md",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "google/auth": "^1.50",
+        "illuminate/notifications": "^11.0 || ^12.0 || ^13.0",
+        "illuminate/support": "^11.0 || ^12.0 || ^13.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "NotificationLab\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": ["NotificationLab\\NotificationLabServiceProvider"]
+        }
+    }
+}

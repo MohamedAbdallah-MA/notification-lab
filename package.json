@@ -1,0 +1,15 @@
+{
+    "name": "notification-lab",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "esbuild resources/js/app.js resources/js/worker.js resources/css/lab.css --bundle --minify --legal-comments=linked --target=es2022 --outdir=dist"
+    },
+    "dependencies": {
+        "firebase": "^13.4.0",
+        "pusher-js": "^8.4.0"
+    },
+    "devDependencies": {
+        "esbuild": "^0.28.0"
+    }
+}
