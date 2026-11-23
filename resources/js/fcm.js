@@ -69,7 +69,7 @@ export function browserMessaging(settings, { permission, workerReady, received }
 
         if (!messaging) {
             messaging = getMessaging(initializeApp(settings.firebase, 'notification-lab'));
-            onMessage(messaging, (payload) => received(incomingRecord(payload, 'Foreground', settings.firebase)));
+            onMessage(messaging, (payload) => received(incomingRecord(payload, 'Foreground')));
         }
 
         const options = { serviceWorkerRegistration };

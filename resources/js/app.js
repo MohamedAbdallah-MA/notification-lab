@@ -78,8 +78,11 @@ function renderFeed() {
 
         const meta = node('span', null, 'message-meta');
         if (item.testId) meta.append(node('span', 'Test', 'pill count'));
-        meta.append(node('span', item.topic ? '#' + item.topic : item.source === 'direct' ? 'Direct' : 'Unknown',
-            'pill' + (item.topic ? ' topic' : '')));
+        const targetLabel = item.source === 'topic' ? (item.topic ? '#' + item.topic : 'Condition')
+            : item.source === 'direct' ? 'Direct' : 'Unknown';
+        const target = node('span', targetLabel, 'pill' + (item.source === 'topic' ? ' topic' : ''));
+        if (item.condition) target.title = item.condition;
+        meta.append(target);
         meta.append(node('time', clock(item.receivedAt), 'timestamp'));
         toggle.append(text, meta);
 

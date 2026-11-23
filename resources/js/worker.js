@@ -10,7 +10,7 @@ const scope = new URL(self.registration.scope).pathname;
 self.addEventListener('install', (event) => event.waitUntil(self.skipWaiting()));
 
 onBackgroundMessage(getMessaging(app), async (payload) => {
-    const message = incomingRecord(payload, 'Background', firebase);
+    const message = incomingRecord(payload, 'Background');
     await storage.save(message).catch(() => {});
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const window of windows) {

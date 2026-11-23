@@ -133,6 +133,7 @@ class LabController
                 'notification' => ['title' => $data['title'], 'body' => $data['body'] ?? ''],
                 'data' => $payload + [
                     'notification_lab_test_id' => $data['test_id'],
+                    'notification_lab_target_type' => $data['target'] === 'topic' ? 'topic' : 'direct',
                     'notification_lab_target' => $data['target'] === 'topic' ? $data['topic'] : 'browser',
                 ],
             ];

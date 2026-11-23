@@ -85,6 +85,25 @@ NOTIFICATION_LAB_TEST_TOPICS=qa-alerts,order-updates-test
 
 A test send to a topic reaches every subscriber to that topic. Use dedicated test topics for isolated checks. Token registration is the default. Set `NOTIFICATION_LAB_REGISTRATION=fid` if your sending flow targets Firebase Installation IDs.
 
+### Identify the target of application sends
+
+For messages sent from your own code, include the target in the FCM data if you want the lab to show it reliably. Here is an example using the `webpush` field of an FCM HTTP v1 message:
+
+```json
+{
+  "topic": "order-updates-test",
+  "webpush": {
+    "data": {
+      "type": "order",
+      "notification_lab_target_type": "topic",
+      "notification_lab_target": "order-updates-test"
+    }
+  }
+}
+```
+
+Include your existing custom fields in `webpush.data`, which overrides the common `message.data` for web recipients. Use `notification_lab_target_type=direct` for a token or installation target. For a topic condition, use `notification_lab_target_type=condition` and put the expression in `notification_lab_target`. A condition appears under the **Topic** filter. Receipts without a verifiable target appear as **Unknown**.
+
 ## Database notifications
 
 The database tab reads the application's existing Laravel notification table. It supports filtering by notification or recipient ID, type, and read status. Expand a row to view the stored payload. For a custom notification model, set `database.model` in `config/notification-lab.php` to the model that creates the records.

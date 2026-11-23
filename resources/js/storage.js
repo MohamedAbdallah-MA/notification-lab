@@ -1,16 +1,29 @@
-export function incomingRecord(payload, mode, firebase) {
+function messageTarget(data, reportedTopic) {
+    const target = data.notification_lab_target;
+    const type = data.notification_lab_target_type;
+    const namedTarget = typeof target === 'string' && target !== '';
+
+    if (type === 'direct') return { source: 'direct', topic: null, condition: null };
+    if (type === 'topic' && namedTarget) return { source: 'topic', topic: target, condition: null };
+    if (type === 'condition' && namedTarget) return { source: 'topic', topic: null, condition: target };
+
+    if (reportedTopic) return { source: 'topic', topic: reportedTopic, condition: null };
+    if (target === 'browser') return { source: 'direct', topic: null, condition: null };
+    if (namedTarget) return { source: 'topic', topic: target, condition: null };
+
+    return { source: 'unknown', topic: null, condition: null };
+}
+
+export function incomingRecord(payload, mode) {
     const data = payload.data || {};
-    const testTarget = data.notification_lab_target;
     const sender = String(payload.from || '');
-    const topic = sender.startsWith('/topics/') ? sender.slice(8)
-        : (testTarget && testTarget !== 'browser' ? testTarget : null);
+    const reportedTopic = sender.startsWith('/topics/') ? sender.slice(8) : null;
 
     return {
         id: payload.messageId || crypto.randomUUID(),
         title: payload.notification?.title || data.title || 'Data message',
         body: payload.notification?.body || data.body || '',
-        source: topic ? 'topic' : (testTarget === 'browser' || sender === firebase.messagingSenderId ? 'direct' : 'unknown'),
-        topic,
+        ...messageTarget(data, reportedTopic),
         testId: data.notification_lab_test_id,
         receivedAt: Date.now(),
         mode,
@@ -42,8 +55,13 @@ export function inboxStorage(firebase) {
     }
 
     return {
-        load() {
-            return use('readonly', (store) => store.getAll());
+        async load() {
+            const messages = await use('readonly', (store) => store.getAll());
+
+            return messages.map((message) => ({
+                ...message,
+                ...messageTarget(message.data || {}, message.topic),
+            }));
         },
         save(message) {
             return use('readwrite', (store) => {
