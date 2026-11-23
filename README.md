@@ -9,7 +9,7 @@ Test Firebase Cloud Messaging from your Laravel app while your mobile and fronte
 
 ## Installation
 
-Run these commands inside the Laravel application that will host the lab. The package targets Laravel 11–13 and requires PHP 8.2 or later, subject to the installed Laravel version's PHP requirement. The UI assets ship with the package.
+Run these commands inside the Laravel application that will host the lab. The package targets Laravel 10.50+ (within 10.x) and Laravel 11–13 and requires PHP 8.2 or later, subject to the installed Laravel version's PHP requirement. The UI assets ship with the package.
 
 ```bash
 composer require --dev zunix/notification-lab

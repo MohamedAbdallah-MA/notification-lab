@@ -44,7 +44,8 @@ class DatabaseNotifications
         }
 
         if (($filters['type'] ?? '') !== '') {
-            $query->whereLike('type', '%'.$filters['type'].'%');
+            $type = $model->getConnection()->getQueryGrammar()->wrap('type');
+            $query->whereRaw("LOWER({$type}) LIKE ?", ['%'.mb_strtolower($filters['type']).'%']);
         }
 
         match ($filters['status'] ?? '') {

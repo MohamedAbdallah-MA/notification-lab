@@ -8,8 +8,8 @@
     "require": {
         "php": "^8.2",
         "google/auth": "^1.50",
-        "illuminate/notifications": "^11.0 || ^12.0 || ^13.0",
-        "illuminate/support": "^11.0 || ^12.0 || ^13.0"
+        "illuminate/notifications": "^10.50 || ^11.0 || ^12.0 || ^13.0",
+        "illuminate/support": "^10.50 || ^11.0 || ^12.0 || ^13.0"
     },
     "autoload": {
         "psr-4": {
