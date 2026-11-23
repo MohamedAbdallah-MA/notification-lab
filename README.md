@@ -71,6 +71,10 @@ Sign in to the host application and open `/notification-lab` over HTTPS or on `l
 
 **FCM accepted** means Firebase accepted the send request. **Received in browser** appears when the lab receives the message. To inspect it, expand its row in **FCM inbox**. Use **Clear inbox** to clear the recent browser history.
 
+## Switch Firebase projects
+
+Change the credentials path in `.env` and run `php artisan notification-lab:setup` again. Setup reloads the configured credentials path, refreshes Laravel's configuration cache if it exists, and discovers a Web App when the saved browser configuration belongs to a different project. Once setup succeeds, reload the lab to register the browser with the new project. Update the public VAPID key in `.env` if you use a project-specific key.
+
 ## Topics
 
 The **Topics** panel shows the current browser's Firebase subscriptions. To enable test sends to topics, set a comma-separated allowlist in `.env` and subscribe the test browser to one of those topics.

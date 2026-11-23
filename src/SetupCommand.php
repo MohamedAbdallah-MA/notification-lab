@@ -3,6 +3,7 @@
 namespace NotificationLab;
 
 use Illuminate\Console\Command;
+use Symfony\Component\Process\Process;
 
 class SetupCommand extends Command
 {
@@ -20,6 +21,7 @@ class SetupCommand extends Command
         }
 
         try {
+            $this->refreshCachedConfiguration();
             $firebase->account();
             $this->info('Firebase target project: '.$firebase->projectId());
             $webConfig = $this->option('web-config');
@@ -34,8 +36,12 @@ class SetupCommand extends Command
                 $firebase->saveWebConfig($firebase->validateWebConfig(json_decode($raw, true)));
             } elseif ($appId) {
                 $firebase->saveWebConfig($firebase->fetchWebConfig($appId));
-            } elseif (! is_file(config('notification-lab.firebase.web_config_path'))) {
-                $firebase->saveWebConfig($this->discover($firebase));
+            } else {
+                try {
+                    $firebase->webConfig();
+                } catch (FirebaseException) {
+                    $firebase->saveWebConfig($this->discover($firebase));
+                }
             }
 
             $firebase->webConfig();
@@ -50,6 +56,26 @@ class SetupCommand extends Command
         $this->line('Enable NOTIFICATION_LAB_ENABLED and authorize the configured gate in your application.');
 
         return self::SUCCESS;
+    }
+
+    private function refreshCachedConfiguration(): void
+    {
+        if (! $this->laravel->configurationIsCached()) {
+            return;
+        }
+
+        // Rebuild in a separate process so Laravel loads the current environment.
+        $process = new Process(
+            [PHP_BINARY, $this->laravel->basePath('artisan'), 'config:cache', '--no-interaction'],
+            $this->laravel->basePath(),
+        );
+
+        if ($process->run() !== 0 || ! $this->laravel->configurationIsCached()) {
+            throw new FirebaseException('Unable to rebuild Laravel configuration. Run php artisan config:clear and try setup again.');
+        }
+
+        $configuration = require $this->laravel->getCachedConfigPath();
+        $this->laravel['config']->set('notification-lab', $configuration['notification-lab']);
     }
 
     private function discover(FirebaseProject $firebase): array
