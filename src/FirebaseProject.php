@@ -167,9 +167,24 @@ class FirebaseProject
 
     public function topics(string $registration): array
     {
-        $result = $this->request('GET', $this->topicsUrl($registration), self::MESSAGING_SCOPE);
+        $topics = [];
+        $query = [];
 
-        return array_values(array_filter(array_column($result['topic_subscriptions'] ?? [], 'topic_name'), 'is_string'));
+        do {
+            $result = $this->request('GET', $this->topicsUrl($registration), self::MESSAGING_SCOPE, query: $query);
+
+            foreach ($result['topicSubscriptions'] ?? $result['topic_subscriptions'] ?? [] as $subscription) {
+                $topic = $subscription['topicName'] ?? $subscription['topic_name'] ?? null;
+                if (is_string($topic)) {
+                    $topics[] = $topic;
+                }
+            }
+
+            $pageToken = $result['nextPageToken'] ?? $result['next_page_token'] ?? '';
+            $query = ['pageToken' => $pageToken];
+        } while ($pageToken !== '');
+
+        return $topics;
     }
 
     public function subscribe(string $registration, string $topic): void
