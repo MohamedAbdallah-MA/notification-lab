@@ -21,7 +21,7 @@ export function incomingRecord(payload, mode) {
 
     return {
         id: payload.messageId || crypto.randomUUID(),
-        title: payload.notification?.title || data.title || 'Data message',
+        title: payload.notification?.title || data.title || '',
         body: payload.notification?.body || data.body || '',
         ...messageTarget(data, reportedTopic),
         testId: data.notification_lab_test_id,

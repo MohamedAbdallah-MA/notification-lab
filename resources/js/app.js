@@ -1,9 +1,11 @@
 import { databasePanel } from './database.js';
 import { browserMessaging } from './fcm.js';
 import { inboxStorage } from './storage.js';
-import { byId, clock, feedback, node, request } from './ui.js';
+import { byId, clock, feedback, node, number, request } from './ui.js';
+import { copy, setupPreferences, t } from './preferences.js';
 
 const settings = JSON.parse(byId('lab').dataset.settings);
+setupPreferences();
 const database = databasePanel(settings);
 const inboxTab = byId('inbox-tab');
 const databaseTab = byId('database-tab');
@@ -42,26 +44,22 @@ const relay = settings.firebase && 'BroadcastChannel' in window
 const messages = new Map();
 const open = new Set();
 const fresh = new Set();
-let currentFilter = 'all';
+let topics = [];
 let registration;
 let pendingTest;
 
 function renderFeed() {
     const focused = document.activeElement?.dataset?.messageId;
     feed.replaceChildren();
-    const shown = [...messages.values()]
-        .filter((item) => currentFilter === 'all' || item.source === currentFilter)
-        .sort((left, right) => right.receivedAt - left.receivedAt);
-    byId('inbox-count').textContent = String(messages.size);
+    const shown = [...messages.values()].sort((left, right) => right.receivedAt - left.receivedAt);
+    byId('inbox-count').textContent = number(messages.size);
     byId('clear-inbox').disabled = messages.size === 0;
 
     if (!shown.length) {
         const empty = node('div', null, 'empty');
-        empty.append(node('strong', registration ? 'Waiting for notifications' : 'No notifications yet'));
-        empty.append(node('span', currentFilter !== 'all' && messages.size
-            ? 'No messages match this filter.'
-            : registration ? 'Send a test or trigger a notification from your application.'
-                : 'Enable notifications to listen from this browser.'));
+        empty.append(node('strong', t(registration ? 'Waiting for notifications' : 'No notifications yet')));
+        empty.append(node('span', t(registration ? 'Send a test or trigger a notification from your application.'
+            : 'Enable notifications to listen from this browser.')));
         feed.append(empty);
         return;
     }
@@ -73,14 +71,21 @@ function renderFeed() {
         toggle.dataset.messageId = item.id;
         toggle.setAttribute('aria-expanded', String(open.has(item.id)));
         const text = node('span');
-        text.append(node('strong', item.title, 'message-title'));
-        if (item.body) text.append(node('span', item.body, 'muted'));
+        const title = node('strong', null, 'message-title');
+        title.append(node('bdi', item.title || t('Data message')));
+        text.append(title);
+        if (item.body) {
+            const body = node('span', null, 'muted');
+            body.append(node('bdi', item.body));
+            text.append(body);
+        }
 
         const meta = node('span', null, 'message-meta');
-        if (item.testId) meta.append(node('span', 'Test', 'pill count'));
-        const targetLabel = item.source === 'topic' ? (item.topic ? '#' + item.topic : 'Condition')
-            : item.source === 'direct' ? 'Direct' : 'Unknown';
+        if (item.testId) meta.append(node('span', t('Test'), 'pill count'));
+        const targetLabel = item.source === 'topic' ? (item.topic ? '#' + item.topic : t('Condition'))
+            : t(item.source === 'direct' ? 'Direct' : 'Unknown');
         const target = node('span', targetLabel, 'pill' + (item.source === 'topic' ? ' topic' : ''));
+        if (item.topic) target.dir = 'ltr';
         if (item.condition) target.title = item.condition;
         meta.append(target);
         meta.append(node('time', clock(item.receivedAt), 'timestamp'));
@@ -91,9 +96,9 @@ function renderFeed() {
         const detail = (label, value) => {
             const cell = node('dd');
             cell.append(value);
-            details.append(node('dt', label), cell);
+            details.append(node('dt', t(label)), cell);
         };
-        detail('Received', item.mode);
+        detail('Received', t(item.mode));
         detail('Message ID', node('code', item.id));
         detail('Data', node('pre', JSON.stringify(item.data, null, 2)));
 
@@ -111,10 +116,10 @@ function renderFeed() {
     }
 }
 
-function setReceipt(state, text) {
+function setReceipt(state, text, values) {
     const receipt = byId('receipt-feedback');
     receipt.dataset.state = state;
-    receipt.textContent = text;
+    copy(receipt, text, values);
     receipt.hidden = !text;
 }
 
@@ -134,7 +139,10 @@ function received(item, persist = true) {
     remember(item, true);
     if (pendingTest && item.testId === pendingTest.id) {
         pendingTest.received = true;
-        setReceipt('received', 'Received in browser at ' + clock(item.receivedAt) + ' · ' + item.mode);
+        setReceipt('received', 'Received in browser at :time · :mode', {
+            time: () => clock(item.receivedAt),
+            mode: () => t(item.mode),
+        });
         open.add(item.id);
     }
 
@@ -146,7 +154,7 @@ function received(item, persist = true) {
 }
 
 function storageUnavailable() {
-    byId('storage-caption').textContent = 'Stored until this page reloads';
+    copy(byId('storage-caption'), 'Stored until this page reloads');
 }
 
 function clear() {
@@ -182,19 +190,14 @@ if (browserStorage) {
 }
 renderFeed();
 
-byId('filters').addEventListener('click', (event) => {
-    const button = event.target.closest('[data-filter]');
-    if (!button) return;
-    currentFilter = button.dataset.filter;
-    for (const filter of byId('filters').querySelectorAll('button')) {
-        filter.setAttribute('aria-pressed', String(filter === button));
-    }
+document.addEventListener('notification-lab:language', () => {
     renderFeed();
+    renderTopics();
 });
 
 function setPermission(permission) {
     byId('permission-check').dataset.state = permission === 'granted' ? 'ready' : permission === 'denied' ? 'error' : 'pending';
-    byId('permission-label').textContent = permission === 'denied' ? 'Notifications blocked' : 'Notification permission';
+    copy(byId('permission-label'), permission === 'denied' ? 'Notifications blocked' : 'Notification permission');
 }
 
 async function changeTopic(method, topic) {
@@ -203,7 +206,8 @@ async function changeTopic(method, topic) {
         const response = await request(settings.routes.topics, {
             method, data: topic === undefined ? undefined : { topic },
         });
-        renderTopics(response.topics);
+        topics = response.topics;
+        renderTopics();
         return true;
     } catch (error) {
         feedback(topicFeedback, error.message, true);
@@ -211,16 +215,17 @@ async function changeTopic(method, topic) {
     }
 }
 
-function renderTopics(topics) {
+function renderTopics() {
     const list = byId('topic-list');
     list.replaceChildren();
-    byId('topic-count').textContent = topics.length + ' subscribed';
+    copy(byId('topic-count'), ':count subscribed', { count: () => number(topics.length) });
 
     for (const topic of topics) {
         const entry = node('li', '#' + topic, 'pill topic');
+        entry.dir = 'ltr';
         const remove = node('button', '×', 'topic-remove');
         remove.type = 'button';
-        remove.setAttribute('aria-label', 'Unsubscribe from ' + topic);
+        remove.setAttribute('aria-label', t('Unsubscribe from :topic', { topic }));
         remove.addEventListener('click', async () => {
             remove.disabled = true;
             await changeTopic('DELETE', topic);
@@ -232,9 +237,9 @@ function renderTopics(topics) {
 
     const select = byId('send-target');
     const selected = select.value;
-    select.replaceChildren(new Option('This browser', 'browser'));
+    select.replaceChildren(new Option(t('This browser'), 'browser'));
     for (const topic of topics.filter((name) => settings.testTopics.includes(name))) {
-        select.append(new Option('Topic #' + topic, 'topic:' + topic));
+        select.append(new Option(t('Topic #:topic', { topic }), 'topic:' + topic));
     }
     if ([...select.options].some((option) => option.value === selected)) select.value = selected;
 }
@@ -266,8 +271,11 @@ async function prepareBrowser(prompt) {
         await request(settings.routes.browser, { method: 'POST', data: { registration: id } });
         registration = id;
         byId('registration-check').dataset.state = 'ready';
-        byId('registration-value').textContent = id.length > 20 ? id.slice(0, 8) + '…' + id.slice(-6) : id;
-        byId('browser-state').textContent = 'Listening';
+        const registrationValue = byId('registration-value');
+        registrationValue.removeAttribute('data-i18n');
+        registrationValue.dir = 'ltr';
+        registrationValue.textContent = id.length > 20 ? id.slice(0, 8) + '…' + id.slice(-6) : id;
+        copy(byId('browser-state'), 'Listening');
         byId('browser-state').classList.add('live');
         for (const control of ['copy-registration', 'topic-name', 'topic-add', 'open-send']) byId(control).disabled = false;
         enable.hidden = true;

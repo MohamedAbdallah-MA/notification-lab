@@ -75,6 +75,8 @@ Sign in to the host application and open `/notification-lab` over HTTPS or on `l
 
 Change the credentials path in `.env` and run `php artisan notification-lab:setup` again. Setup reloads the configured credentials path, refreshes Laravel's configuration cache if it exists, and discovers a Web App when the saved browser configuration belongs to a different project. Once setup succeeds, reload the lab to register the browser with the new project. Update the public VAPID key in `.env` if you use a project-specific key.
 
+Use the header controls to switch between English and Arabic or between light and dark mode. The browser remembers your selections.
+
 ## Topics
 
 The **Topics** panel shows the current browser's Firebase subscriptions. To enable test sends to topics, set a comma-separated allowlist in `.env` and subscribe the test browser to one of those topics.
@@ -102,7 +104,7 @@ For messages sent from your own code, include the target in the FCM data if you 
 }
 ```
 
-Include your existing custom fields in `webpush.data`, which overrides the common `message.data` for web recipients. Use `notification_lab_target_type=direct` for a token or installation target. For a topic condition, use `notification_lab_target_type=condition` and put the expression in `notification_lab_target`. A condition appears under the **Topic** filter. Receipts without a verifiable target appear as **Unknown**.
+Include your existing custom fields in `webpush.data`, which overrides the common `message.data` for web recipients. Use `notification_lab_target_type=direct` for a token or installation target. For a topic condition, use `notification_lab_target_type=condition` and put the expression in `notification_lab_target`. Topic names, conditions, and direct targets are shown on each receipt. All receipts share one inbox, including those labeled **Unknown**.
 
 ## Database notifications
 

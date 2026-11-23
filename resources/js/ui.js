@@ -1,3 +1,5 @@
+import { copy, locale } from './preferences.js';
+
 export const byId = (id) => document.getElementById(id);
 
 export function node(tag, text, className) {
@@ -8,18 +10,22 @@ export function node(tag, text, className) {
 }
 
 export function feedback(element, message = '', error = false) {
-    element.textContent = message;
+    copy(element, message);
     element.dataset.error = String(error);
 }
 
+export function number(value) {
+    return new Intl.NumberFormat(locale()).format(value);
+}
+
 export function clock(value) {
-    return new Date(value).toLocaleTimeString([], {
+    return new Date(value).toLocaleTimeString(locale(), {
         hour: '2-digit', minute: '2-digit', second: '2-digit',
     });
 }
 
 export function dateTime(value) {
-    return value ? new Date(value).toLocaleString([], {
+    return value ? new Date(value).toLocaleString(locale(), {
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
     }) : '—';
 }

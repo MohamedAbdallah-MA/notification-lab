@@ -1,5 +1,6 @@
 import Pusher from 'pusher-js';
-import { byId, clock, csrfToken, dateTime, feedback, node, request } from './ui.js';
+import { byId, clock, csrfToken, dateTime, feedback, node, number, request } from './ui.js';
+import { copy, t } from './preferences.js';
 
 export function databasePanel(settings) {
     const rows = byId('database-rows');
@@ -15,10 +16,11 @@ export function databasePanel(settings) {
     let refreshTimer;
     let controller;
     let live = false;
+    let lastResult;
 
     function empty(text) {
         const row = node('tr');
-        const cell = node('td', text, 'table-empty');
+        const cell = node('td', t(text), 'table-empty');
         cell.colSpan = 6;
         row.append(cell);
         rows.replaceChildren(row);
@@ -33,23 +35,23 @@ export function databasePanel(settings) {
         const fragment = document.createDocumentFragment();
         for (const item of items) {
             const row = node('tr');
-            const type = String(item.type || 'Unknown').split('\\').at(-1);
+            const type = String(item.type || t('Unknown')).split('\\').at(-1);
             const typeCell = node('td');
             const code = node('code', type);
             code.title = item.type;
             typeCell.append(code);
 
             const state = node('td');
-            state.append(node('span', item.readAt ? 'Read' : 'Unread', 'pill' + (item.readAt ? '' : ' unread')));
+            state.append(node('span', t(item.readAt ? 'Read' : 'Unread'), 'pill' + (item.readAt ? '' : ' unread')));
 
             const actions = node('td');
-            const toggle = node('button', 'Details', 'text-button');
+            const toggle = node('button', t('Details'), 'text-button');
             toggle.type = 'button';
             toggle.setAttribute('aria-expanded', String(open.has(item.id)));
             actions.append(toggle);
             row.append(
                 typeCell, node('td', item.title || '—'),
-                node('td', String(item.recipientType || 'Recipient').split('\\').at(-1) + ' #' + item.recipientId),
+                node('td', String(item.recipientType || t('Recipient')).split('\\').at(-1) + ' #' + item.recipientId),
                 state, node('td', dateTime(item.createdAt), 'timestamp'), actions,
             );
 
@@ -57,7 +59,7 @@ export function databasePanel(settings) {
             detail.hidden = !open.has(item.id);
             const cell = node('td');
             cell.colSpan = 6;
-            const id = node('p', 'Notification ID: ' + item.id, 'muted');
+            const id = node('p', t('Notification ID: :id', { id: item.id }), 'muted');
             cell.append(id, node('pre', JSON.stringify(item.data, null, 2)));
             detail.append(cell);
             toggle.addEventListener('click', () => {
@@ -80,11 +82,14 @@ export function databasePanel(settings) {
         const query = new URLSearchParams({ ...filters, page: String(page) });
         try {
             const result = await request(settings.routes.database + '?' + query, { signal: current.signal });
+            lastResult = result;
             render(result.items, result.available);
             previous.disabled = page <= 1;
             next.disabled = !result.hasMore;
-            byId('database-page').textContent = 'Page ' + page;
-            byId('database-updated').textContent = 'Updated ' + clock(Date.now());
+            const currentPage = page;
+            const updatedAt = Date.now();
+            copy(byId('database-page'), 'Page :page', { page: () => number(currentPage) });
+            copy(byId('database-updated'), 'Updated :time', { time: () => clock(updatedAt) });
             feedback(notice);
         } catch (error) {
             if (error.name !== 'AbortError') feedback(notice, error.message, true);
@@ -103,7 +108,7 @@ export function databasePanel(settings) {
         const options = settings.broadcast;
         if (!options || live) return;
         live = true;
-        status.textContent = 'Connecting…';
+        copy(status, 'Connecting…');
 
         const transport = {
             cluster: options.cluster,
@@ -128,24 +133,27 @@ export function databasePanel(settings) {
             const channel = connection.subscribe('private-' + options.channel);
             channel.bind('notification-lab.database.changed', scheduleRefresh);
             channel.bind('pusher:subscription_succeeded', () => {
-                status.textContent = 'Live updates';
+                copy(status, 'Live updates');
                 status.classList.add('live');
                 scheduleRefresh();
             });
             channel.bind('pusher:subscription_error', () => {
-                status.textContent = 'Live updates unavailable';
+                copy(status, 'Live updates unavailable');
                 status.classList.remove('live');
             });
             connection.connection.bind('state_change', ({ current }) => {
                 if (current === 'connected') return;
-                status.textContent = current === 'connecting' ? 'Connecting…' : 'Manual refresh';
+                copy(status, current === 'connecting' ? 'Connecting…' : 'Manual refresh');
                 status.classList.remove('live');
             });
         } catch {
-            status.textContent = 'Live updates unavailable';
+            copy(status, 'Live updates unavailable');
         }
     }
 
+    document.addEventListener('notification-lab:language', () => {
+        if (lastResult) render(lastResult.items, lastResult.available);
+    });
     refresh.addEventListener('click', load);
     previous.addEventListener('click', () => { page -= 1; load(); });
     next.addEventListener('click', () => { page += 1; load(); });
